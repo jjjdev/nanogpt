@@ -7,6 +7,8 @@ Nano GPT project - Build a GPT model following the paper "Attention is All You N
 
 - akarpathy's google colab tutorial - https://colab.research.google.com/drive/1JMLa53HDuA-i7ZBmqV7ZnA3c_fvtXnx-?usp=sharing
 
+- akarpathy's youtube tutorial - https://www.youtube.com/@AndrejKarpathy
+
 
 ## Overview
 Building a lightweight language model (LLM) trained on a dataset that mimics Shakespeare's writing style.  We will learn how to train and fine-tune a GPT that will mimic the performance of OpenAI's GPT-2 (wow!).
