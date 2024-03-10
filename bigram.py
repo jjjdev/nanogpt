@@ -55,7 +55,7 @@ def get_batch(split):
     x, y = x.to(device), y.to(device)
     return x, y
 
-@torch.no_grad()
+@torch.no_grad() # Disables Backward Propagation for more efficient pytorch memory use
 def estimate_loss():
     out = {}
     model.eval() # Set model for evaluation phase
@@ -70,7 +70,7 @@ def estimate_loss():
     return out
 
 # Simple Bigram Model
-class BigramLanguageModel(nn.Module)
+class BigramLanguageModel(nn.Module):
     
     def __init__(self, vocabulary_size):
         super().__init__()
