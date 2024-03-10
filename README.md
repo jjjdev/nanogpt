@@ -1,8 +1,17 @@
 # nanogpt
-Nano GPT project from karpathy
+Nano GPT project - Build a GPT model following the paper "Attention is All You Need" and akarpathy's tutorial.
+
+## Links and Resources
+- Attention is All You Need paper: https://arxiv.org/abs/1706.03762
+- OpenAI GPT-3 paper: https://arxiv.org/abs/2005.14165 
+
+- akarpathy's google colab tutorial - https://colab.research.google.com/drive/1JMLa53HDuA-i7ZBmqV7ZnA3c_fvtXnx-?usp=sharing
+
 
 ## Overview
-NanoGPT is a project that aims to build a lightweight language model (LLM) trained on a dataset that mimics Shakespeare's writing style. This project leverages deep learning techniques to generate text that resembles Shakespearean language.
+Building a lightweight language model (LLM) trained on a dataset that mimics Shakespeare's writing style.  We will learn how to train and fine-tune a GPT that will mimic the performance of OpenAI's GPT-2 (wow!).
+
+The code is a very simple foundation for us to hack and improve, learn to train models from scratch, or finetune pretrained checkpoints.  
 
 ## Dataset
 The dataset used for training NanoGPT consists of a collection of Shakespeare's plays, sonnets, and other literary works. This dataset is preprocessed to extract the text and convert it into a format suitable for training a language model.
@@ -16,14 +25,10 @@ During the training process, NanoGPT learns to predict the next word in a sequen
 ## Evaluation Metrics
 To evaluate the performance of NanoGPT, several metrics can be used, such as perplexity and BLEU score. Perplexity measures how well the model predicts the next word in a sequence, while BLEU score compares the generated text with reference text to assess its similarity.
 
-## Results and Future Work
-The trained NanoGPT model can generate text that closely resembles Shakespearean language. However, there is still room for improvement. Future work could involve fine-tuning the model on a larger and more diverse dataset, exploring different hyperparameters, or incorporating additional techniques such as reinforcement learning.
 
 ## Usage
 To use NanoGPT, follow the instructions in the project's documentation. This may involve installing the required dependencies, downloading the pre-trained model, and running the provided scripts or APIs to generate text.
 
-## Contributing
-Contributions to NanoGPT are welcome! If you have any ideas, bug reports, or improvements, please open an issue or submit a pull request on the project's GitHub repository.
 
-## License
-NanoGPT is released under the MIT License. See the [LICENSE](./LICENSE) file for more details.
+## Credit
+All credit goes to Andrei Karpathy!!  Please take a look at his incredible learning materials (links above somewhere) 
