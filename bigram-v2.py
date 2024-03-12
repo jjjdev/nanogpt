@@ -79,6 +79,7 @@ class BigramLanguageModel(nn.Module):
         # Each token directly reads off the logits for the next token from a lookup table
         # has a weight inside that stores the probability of the next token
         self.token_embedding_table = nn.Embedding(vocabulary_size, n_embd)
+        self.positional_embedding_table = nn.Embedding(block_size, n_embd) # each pos gets own embedding vector 
         self.linear = nn.Linear(n_embd, vocabulary_size)
 
         # I left these there but they aren't needed
@@ -90,9 +91,9 @@ class BigramLanguageModel(nn.Module):
         # idx and targers are both (B,T) tensor of integers
         #logits = self.token_embedding_table(idx) # (B, T, C)
         tok_emb = self.token_embedding_table(idx) # (B, T, C) # instead of tokens get token embeddings
-
+        pos_emb = self.positional_embedding_table(torch.arange(T, device=device))    # (T, C)
         # To go from token embeddings to logits, need a linear layer
-        logits = self.linear(tok_emb) # (B, T, C)
+        logits = self.linear(tok_emb) # (B, T, C) c = vocabulary size
 
         if targets is None:
             loss = None
