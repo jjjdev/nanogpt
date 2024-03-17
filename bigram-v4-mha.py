@@ -107,6 +107,21 @@ class MultiHeadAttention(nn.Module):
     def forward(self, x):
         # Apply each head to the input in parallel, concatenate outputs
         return torch.cat([head(x) for head in self.heads], dim=-1)
+    
+
+class FeedForward(nn.Module):
+    """ Simple linear layer followed by a non-linearity """
+
+    def __init__(self, n_embd):
+        super().__init__()
+        self.net = nn.Sequential(
+            nn.Linear(n_embd, n_embd),
+            nn.ReLU(),
+        )
+
+    def forward(self, x):
+        return self.net(x)
+    
 
 # Simple Bigram Model
 class BigramLanguageModel(nn.Module):
@@ -119,6 +134,7 @@ class BigramLanguageModel(nn.Module):
         self.token_embedding_table = nn.Embedding(vocabulary_size, n_embd)
         self.position_embedding_table = nn.Embedding(block_size, n_embd) # each pos gets own embedding vector 
         self.sa_heads = MultiHeadAttention(4, n_embd//4) # i.e. 4 heads of 8 dimensional self-attention
+        self.ffwd = FeedForward(n_embd)
         self.lm_head = nn.Linear(n_embd, vocabulary_size) # linear layer to convert to logits
         #self.linear = nn.Linear(n_embd, vocabulary_size)
 
@@ -136,7 +152,8 @@ class BigramLanguageModel(nn.Module):
         pos_emb = self.position_embedding_table(torch.arange(T, device=device))    # (T, C)
         x = tok_emb + pos_emb # (B, T, C)
         x = self.sa_heads(x) # (B, T, C)
-        
+        x = self.ffwd(x) # (B, T, C)
+
         # To go from token embeddings to logits, need a linear layer
         logits = self.lm_head(x) # (B, T, vocab_size)
 
