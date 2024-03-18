@@ -91,7 +91,7 @@ class Head(nn.Module):
         q = self.query(x)
 
         # Compute the self-attention
-        weights = q @ k.transpose(-2, -1) * C**-0.5 # (B, T, T)
+        weights = q @ k.transpose(-2, -1) * k.shape[-1]**-0.5 # (B, T, T)
         weights = weights.masked_fill(self.tril[:T, :T] == 0, float('-inf')) # (T, T)
         weights = F.softmax(weights, dim=1) # (T, T) # exponentiate and normalize
         weights = self.dropout(weights) # (T, T) # randomly prevent some of the nodes from communicating
@@ -99,7 +99,6 @@ class Head(nn.Module):
         # perform weighted aggregation of values
         v = self.value(x) # (B, T, C)
         out = weights @ v 
-
         return out
     
 class MultiHeadAttention(nn.Module):
@@ -108,14 +107,14 @@ class MultiHeadAttention(nn.Module):
     def __init__(self, num_heads, head_size):
         super().__init__()
         self.heads = nn.ModuleList([Head(head_size) for _ in range(num_heads)])
-        self.proj = nn.Linear(n_embd, n_embd)
+        self.proj = nn.Linear(head_size * num_heads, n_embd)
         self.dropout = nn.Dropout(dropout)
 
     def forward(self, x):
         # Apply each head to the input in parallel, concatenate outputs
         out =  torch.cat([head(x) for head in self.heads], dim=-1)
-        #out = self.dropout(self.proj(out))
-        out = self.proj(out)
+        out = self.dropout(self.proj(out))
+        #out = self.proj(out)
         return out
     
 
@@ -165,7 +164,19 @@ class GPTLanguageModel(nn.Module):
         self.blocks = nn.Sequential(*[Block(n_embd, n_head=n_head) for _ in range(n_layer)])
         self.ln_f = nn.LayerNorm(n_embd) # layer norm for final output
         self.lm_head = nn.Linear(n_embd, vocabulary_size) # linear layer to convert to logits
+
+        # better init, not covered in the original GPT video, but important, will cover in followup video
+        self.apply(self._init_weights)
     
+    def _init_weights(self, module):
+        if isinstance(module, nn.Linear, nn.Embedding):
+            torch.nn.init.normal_(module.weight, mean=0.0, std=0.02)
+            if module.bias is not None:
+                torch.nn.init.zeros_(module.bias)
+        elif isinstance(module, nn.Embedding):
+            torch.nn.init.normal_(module.weight, mean=0.0, std=0.02)
+
+
     def forward(self, idx, targets=None):
 
         B, T = idx.shape
@@ -176,7 +187,7 @@ class GPTLanguageModel(nn.Module):
         pos_emb = self.position_embedding_table(torch.arange(T, device=device))    # (T, C)
         x = tok_emb + pos_emb # (B, T, C)
         x = self.blocks(x) # (B, T, C)
-        #x = self.ffwd(x) # (B, T, C)
+        x = self.ln_f(x) # (B, T, C)
 
         # To go from token embeddings to logits, need a linear layer
         logits = self.lm_head(x) # (B, T, vocab_size)
@@ -233,7 +244,7 @@ optimizer = torch.optim.AdamW(model.parameters(), lr=learning_rate)
 for iter in range(max_iters):
 
     # Every once in a while evaluate the loss on the training and validation data
-    if iter % eval_interval == 0:
+    if iter % eval_interval == 0 or iter == max_iters - 1:
         losses = estimate_loss()
         print(f'Iter {iter} - Train Loss: {losses["train"]:.4f}, Validation Loss: {losses["validation"]:.4f}')
 
@@ -250,4 +261,7 @@ for iter in range(max_iters):
 context = torch.zeros((1,1), dtype=torch.long, device=device) # creating a 1x1 tensor of zeros (remember 0 = new line)
 
 # ask for 500 new tokens, generate, convert to list to feed into decode
-print(decode(m.generate(context, max_new_tokens=500)[0].tolist()))
+print(decode(m.generate(context, max_new_tokens=1000)[0].tolist()))
+
+# Save the output in a file
+#open('more.txt', 'w').write(decode(m.generate(context, max_new_tokens=10000)[0].tolist()))
