@@ -11,6 +11,9 @@ eval_interval = 500
 learning_rate = 0.001
 eval_iters = 200
 n_embd = 32 # number of embedding dimensions
+n_layer = 4 # number of transformer layers
+n_head = 4 # number of heads in multi-head attention
+dropout = 0.2 # dropout rate
 
 # Set the device to use cuda if there's a GPU.  
 # Note that later we move the model and data to the device (by passing device in args)
@@ -102,11 +105,15 @@ class MultiHeadAttention(nn.Module):
     def __init__(self, num_heads, head_size):
         super().__init__()
         self.heads = nn.ModuleList([Head(head_size) for _ in range(num_heads)])
-        #self.linear = nn.Linear(num_heads * head_size, n_embd)
+        self.proj = nn.Linear(n_embd, n_embd)
+        #self.dropout = nn.Dropout(dropout)
 
     def forward(self, x):
         # Apply each head to the input in parallel, concatenate outputs
-        return torch.cat([head(x) for head in self.heads], dim=-1)
+        out =  torch.cat([head(x) for head in self.heads], dim=-1)
+        #out = self.dropout(self.proj(out))
+        out = self.proj(out)
+        return out
     
 
 class FeedForward(nn.Module):
@@ -115,16 +122,34 @@ class FeedForward(nn.Module):
     def __init__(self, n_embd):
         super().__init__()
         self.net = nn.Sequential(
-            nn.Linear(n_embd, n_embd),
+            nn.Linear(n_embd, 4 * n_embd),  # 4* comes from paper 2048/512 = 4 (see 1:32 in the video)
             nn.ReLU(),
+            nn.Linear(4 * n_embd, n_embd), # residual layer going back into projection pathway
+            #nn.Dropout(dropout)
         )
 
     def forward(self, x):
         return self.net(x)
     
+class Block(nn.Module):
+    """ Transformer Block: communication followed by computation """
 
-# Simple Bigram Model
-class BigramLanguageModel(nn.Module):
+    def __init__(self, n_embd, n_head):
+        # n_embd: embedding dimension, n_head = number of heads we would like to use
+        super().__init__()
+        head_size = n_embd // n_head
+        self.sa = MultiHeadAttention(n_head, head_size)
+        self.ffwd = FeedForward(n_embd)
+        #self.ln1 = nn.LayerNorm(n_embd)
+        #self.ln2 = nn.LayerNorm(n_embd)
+
+    def forward(self, x):
+        x = x + self.sa(x)
+        x = x + self.ffwd(x)
+        return x
+
+# GPT Model
+class GPTLanguageModel(nn.Module):
     
     def __init__(self):
         super().__init__()
@@ -132,16 +157,16 @@ class BigramLanguageModel(nn.Module):
         # Each token directly reads off the logits for the next token from a lookup table
         # has a weight inside that stores the probability of the next token
         self.token_embedding_table = nn.Embedding(vocabulary_size, n_embd)
-        self.position_embedding_table = nn.Embedding(block_size, n_embd) # each pos gets own embedding vector 
-        self.sa_heads = MultiHeadAttention(4, n_embd//4) # i.e. 4 heads of 8 dimensional self-attention
-        self.ffwd = FeedForward(n_embd)
+        self.position_embedding_table = nn.Embedding(block_size, n_embd) # each pos gets own embedding vector    
+        #self.blocks = nn.Sequential(*[Block(n_embd, n_head=n_head) for _ in range(n_layer)])
+        #self.ln_f = nn.LayerNorm(n_embd) # layer norm for final output
+        self.blocks = nn.Sequential(
+            Block(n_embd, n_head=n_head),
+            Block(n_embd, n_head=n_head),
+            Block(n_embd, n_head=n_head),
+        )
         self.lm_head = nn.Linear(n_embd, vocabulary_size) # linear layer to convert to logits
-        #self.linear = nn.Linear(n_embd, vocabulary_size)
-
-        # I left these there but they aren't needed
-        #self.embedding = nn.Embedding(vocabulary_size, vocabulary_size)
-        #self.linear = nn.Linear(vocabulary_size, vocabulary_size)
-
+    
     def forward(self, idx, targets=None):
 
         B, T = idx.shape
@@ -151,8 +176,8 @@ class BigramLanguageModel(nn.Module):
         tok_emb = self.token_embedding_table(idx) # (B, T, C) # instead of tokens get token embeddings
         pos_emb = self.position_embedding_table(torch.arange(T, device=device))    # (T, C)
         x = tok_emb + pos_emb # (B, T, C)
-        x = self.sa_heads(x) # (B, T, C)
-        x = self.ffwd(x) # (B, T, C)
+        x = self.blocks(x) # (B, T, C)
+        #x = self.ffwd(x) # (B, T, C)
 
         # To go from token embeddings to logits, need a linear layer
         logits = self.lm_head(x) # (B, T, vocab_size)
@@ -196,7 +221,7 @@ class BigramLanguageModel(nn.Module):
         return idx
     
 # Create the model
-model = BigramLanguageModel()
+model = GPTLanguageModel()
 m = model.to(device)
 
 # Create a PyTorch optimizer
