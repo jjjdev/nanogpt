@@ -17,7 +17,7 @@ dropout = 0.2 # dropout rate
 
 # Set the device to use cuda if there's a GPU.  
 # Note that later we move the model and data to the device (by passing device in args)
-device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+device = "cuda" if torch.cuda.is_available() else "cpu"
 
 torch.manual_seed(1337)
 
@@ -93,7 +93,7 @@ class Head(nn.Module):
         # Compute the self-attention
         weights = q @ k.transpose(-2, -1) * k.shape[-1]**-0.5 # (B, T, T)
         weights = weights.masked_fill(self.tril[:T, :T] == 0, float('-inf')) # (T, T)
-        weights = F.softmax(weights, dim=1) # (T, T) # exponentiate and normalize
+        weights = F.softmax(weights, dim=-1) # (T, T) # exponentiate and normalize
         weights = self.dropout(weights) # (T, T) # randomly prevent some of the nodes from communicating
 
         # perform weighted aggregation of values
@@ -112,10 +112,10 @@ class MultiHeadAttention(nn.Module):
 
     def forward(self, x):
         # Apply each head to the input in parallel, concatenate outputs
-        out =  torch.cat([head(x) for head in self.heads], dim=-1)
+        out = torch.cat([h(x) for h in self.heads], dim=-1)
         out = self.dropout(self.proj(out))
-        #out = self.proj(out)
         return out
+
     
 
 class FeedForward(nn.Module):
@@ -160,10 +160,10 @@ class GPTLanguageModel(nn.Module):
         # Each token directly reads off the logits for the next token from a lookup table
         # has a weight inside that stores the probability of the next token
         self.token_embedding_table = nn.Embedding(vocabulary_size, n_embd)
-        self.position_embedding_table = nn.Embedding(block_size, n_embd) # each pos gets own embedding vector    
+        self.position_embedding_table = nn.Embedding(block_size, n_embd)
         self.blocks = nn.Sequential(*[Block(n_embd, n_head=n_head) for _ in range(n_layer)])
-        self.ln_f = nn.LayerNorm(n_embd) # layer norm for final output
-        self.lm_head = nn.Linear(n_embd, vocabulary_size) # linear layer to convert to logits
+        self.ln_f = nn.LayerNorm(n_embd) # final layer norm
+        self.lm_head = nn.Linear(n_embd, vocabulary_size)
 
         # better init, not covered in the original GPT video, but important, will cover in followup video
         self.apply(self._init_weights)
@@ -220,7 +220,7 @@ class GPTLanguageModel(nn.Module):
             logits = logits[:, -1, :] # becomes (B, C)
 
             # apply softmax to get probabilities
-            probs = F.softmax(logits, dim=1)    # (B, C)
+            probs = F.softmax(logits, dim=-1)    # (B, C)
 
             # sample from the distribution
             idx_next = torch.multinomial(probs, num_samples=1) # (B, 1)
