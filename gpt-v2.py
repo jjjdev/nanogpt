@@ -223,6 +223,9 @@ class GPTLanguageModel(nn.Module):
 model = GPTLanguageModel()
 m = model.to(device)
 
+# print the number of parameters in the model
+print(sum(p.numel() for p in m.parameters())/1e6, 'M parameters')
+
 # Create a PyTorch optimizer
 optimizer = torch.optim.AdamW(model.parameters(), lr=learning_rate)
 
